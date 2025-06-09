@@ -1,12 +1,22 @@
 # Yandex.Cloud MultiMaster MySQL Setup
 
-This repository provides instructions for creating a multi-master MySQL cluster in Yandex Cloud. The setup uses two Ubuntu Server virtual machines. Each VM runs MySQL configured with Group Replication so that both nodes can accept writes.
+This repository provides instructions for creating a multi-master MySQL cluster in Yandex Cloud. The setup uses two **Windows Server** virtual machines. Each VM runs MySQL configured with Group Replication so that both nodes can accept writes.
 
 ## Prerequisites
 
-- Yandex Cloud account with sufficient quota to create two Ubuntu Server instances
+- Yandex Cloud account with sufficient quota to create two Windows Server instances
 - [Yandex Cloud CLI](https://cloud.yandex.com/en/docs/cli/quickstart) (`yc`) installed and configured
-- Access to install MySQL from the official Ubuntu repositories
+- Access to install MySQL on Windows (for example via the [MySQL Installer for Windows](https://dev.mysql.com/downloads/installer/))
+
+## Connecting with the Yandex Cloud CLI
+
+Configure the CLI for your cloud and folder (replace with your IDs if different):
+
+```bash
+yc config set cloud-id cloud-nphne-2xsw2s3a
+yc config set folder-id b1ge8i9vtd79bg2dkvu5
+yc init
+```
 
 ## Creating the VMs
 
@@ -19,15 +29,21 @@ yc compute instance create \
   --network-interface subnet-name=<your-subnet>,nat-ip-version=ipv4 \
   --platform standard-v1 \
   --cores 4 --memory 8G \
-  --create-boot-disk type=network-hdd,size=64GB,image-family=ubuntu-2204-lts \
-  --ssh-key ~/.ssh/id_rsa.pub
+  --create-boot-disk type=network-hdd,size=64GB,image-family=windows-2022-gv2 \
+  --ssh-key ~/.ssh/id_rsa.pub  # used to retrieve the initial Administrator password
 ```
 
-Create a second VM `mysql-node2` in the same way (possibly in a different zone). Both machines should run Ubuntu Server.
+Retrieve the password with:
+
+```bash
+yc compute instance get-serial-port-output mysql-node1 | grep password
+```
+
+Create a second VM `mysql-node2` in the same way (possibly in a different zone). Both machines should run Windows Server.
 
 ## Installing MySQL and Configuring Group Replication
 
-1. Log in to each VM via SSH and install MySQL 8.x from the official Ubuntu repositories (for example `sudo apt install mysql-server`).
+1. Log in to each VM via RDP and install MySQL 8.x using the MySQL Installer for Windows.
 2. Enable the Group Replication plugin. In `/etc/mysql/mysql.conf.d/mysqld.cnf`, add:
 
 ```ini
@@ -71,7 +87,7 @@ When `SHOW STATUS LIKE 'group_replication_primary_member';` returns a UUID from 
 
 This simple active/standby scheme can be implemented using a load balancer or application logic.
 
-An example Bash helper script is provided in `scripts/connect.sh` that attempts to connect to the primary node and falls back to the secondary node if needed.
+An example PowerShell helper script is provided in `scripts/connect.ps1` that attempts to connect to the primary node and falls back to the secondary node if needed.
 
 ## Failover Notes
 
